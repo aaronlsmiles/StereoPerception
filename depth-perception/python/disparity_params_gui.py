@@ -39,7 +39,7 @@ cv2.createTrackbar('sigma', 'disp', 0, 20, nothing)
 cv2.createTrackbar('lmbda', 'disp', 7000, 9000, nothing)
 
 
-# Creating an object of StereoBM algorithm
+# Creating an object of StereoBM or stereoSGBM algorithm and WLS filter
 stereo = cv2.StereoBM_create()
 # stereo = cv2.StereoSGBM_create()
 wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
