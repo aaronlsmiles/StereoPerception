@@ -10,8 +10,8 @@ CamR_id = 1  # Camera ID for right camera
 CamL = cv2.VideoCapture(CamL_id)
 CamR = cv2.VideoCapture(CamR_id)
 
-directory = r'C:\Users\joini\OneDrive\Documents\code\DCE\stereoVision\StereoPerception\depth-perception'
-os.chdir(directory)
+#directory = r'C:\Users\joini\OneDrive\Documents\code\DCE\stereoVision\StereoPerception\depth-perception'
+#os.chdir(directory)
 
 # Reading the mapping values for stereo image rectification
 cv_file = cv2.FileStorage("../data/Y/params_py.xml", cv2.FILE_STORAGE_READ)
@@ -40,9 +40,13 @@ cv2.createTrackbar('speckleRange', 'disp', 0, 100, nothing)
 cv2.createTrackbar('speckleWindowSize', 'disp', 3, 25, nothing)
 cv2.createTrackbar('disp12MaxDiff', 'disp', 5, 25, nothing)
 cv2.createTrackbar('minDisparity', 'disp', 5, 25, nothing)
+cv2.createTrackbar('sigma', 'disp', 0, 20, nothing)
+cv2.createTrackbar('lmbda', 'disp', 7000, 9000, nothing)
+
 
 # Creating an object of StereoBM algorithm
 stereo = cv2.StereoBM_create()
+wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
 # stereo = cv2.StereoSGBM_create()
 
 while True:
@@ -57,7 +61,7 @@ while True:
         imgL_gray = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
 
         # Applying stereo image rectification on the left image
-        Left_nice = cv2.remap(imgL_gray,
+        Left_rect = cv2.remap(imgL_gray,
                               Left_Stereo_Map_x,
                               Left_Stereo_Map_y,
                               cv2.INTER_LANCZOS4,
@@ -65,7 +69,7 @@ while True:
                               0)
 
         # Applying stereo image rectification on the right image
-        Right_nice = cv2.remap(imgR_gray,
+        Right_rect = cv2.remap(imgR_gray,
                                Right_Stereo_Map_x,
                                Right_Stereo_Map_y,
                                cv2.INTER_LANCZOS4,
@@ -84,6 +88,8 @@ while True:
         speckleWindowSize = cv2.getTrackbarPos('speckleWindowSize', 'disp') * 2
         disp12MaxDiff = cv2.getTrackbarPos('disp12MaxDiff', 'disp')
         minDisparity = cv2.getTrackbarPos('minDisparity', 'disp')
+        sigma = cv2.getTrackbarPos('sigma', 'disp') / 10
+        lmbda = cv2.getTrackbarPos('lmbda', 'disp')
 
         # Setting the updated parameters before computing disparity map
         stereo.setNumDisparities(numDisparities)
@@ -97,9 +103,11 @@ while True:
         stereo.setSpeckleWindowSize(speckleWindowSize)
         stereo.setDisp12MaxDiff(disp12MaxDiff)
         stereo.setMinDisparity(minDisparity)
+        wls_filter.setSigmaColor(sigma)
+        wls_filter.setLambda(lmbda)
 
         # Calculating disparity using the StereoBM algorithm
-        disparity = stereo.compute(Left_nice, Right_nice)
+        disparity = stereo.compute(Left_rect, Right_rect)
         # NOTE: compute returns a 16bit signed single channel image,
         # CV_16S containing a disparity map scaled by 16. Hence, it
         # is essential to convert it to CV_32F and scale it down 16 times.
@@ -115,26 +123,20 @@ while True:
         disparityImg = cv2.applyColorMap(disparityImg, cv2.COLORMAP_JET)
 
         # Applying WLS filter to remove noise
-        wsize = 31
-        max_disp = 128
-        sigma = 1.5
-        lmbda = 8000.0
-        left_image = Left_nice
-        right_image = Right_nice
-        left_matcher = cv2.StereoBM_create(max_disp, wsize)
-        #left_matcher = disparityImg
+        left_image = Left_rect
+        right_image = Right_rect
+        left_matcher = stereo
         right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
         left_disp = left_matcher.compute(left_image, right_image)
         right_disp = right_matcher.compute(right_image, left_image)
 
         # Now create DisparityWLSFilter
         wls_filter = cv2.ximgproc.createDisparityWLSFilter(left_matcher)
-        wls_filter.setLambda(lmbda)
-        wls_filter.setSigmaColor(sigma)
         filtered_disp = wls_filter.filter(left_disp, left_image, disparity_map_right=right_disp)
 
         # Displaying the disparity map
-        cv2.imshow("disparity map", filtered_disp)  # disparityImg)
+        cv2.imshow("disparity map", disparityImg)
+        cv2.imshow("filtered disparity map", filtered_disp)
 
         # Close window using esc key
         if cv2.waitKey(1) == 27:
@@ -146,7 +148,7 @@ while True:
 
 print("Saving depth estimation parameters......")
 
-cv_file = cv2.FileStorage("../data/Y/depth_estimation_params_py.xml", cv2.FILE_STORAGE_WRITE)
+cv_file = cv2.FileStorage("../data/Y/depth_params.xml", cv2.FILE_STORAGE_WRITE)
 cv_file.write("numDisparities", numDisparities)
 cv_file.write("blockSize", blockSize)
 cv_file.write("preFilterType", preFilterType)
@@ -159,4 +161,6 @@ cv_file.write("speckleWindowSize", speckleWindowSize)
 cv_file.write("disp12MaxDiff", disp12MaxDiff)
 cv_file.write("minDisparity", minDisparity)
 cv_file.write("M", 39.075)
+cv_file.write("sigma", sigma)
+cv_file.write("lmbda", lmbda)
 cv_file.release()
