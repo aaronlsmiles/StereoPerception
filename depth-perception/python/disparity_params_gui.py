@@ -10,9 +10,6 @@ CamR_id = 1  # Camera ID for right camera
 CamL = cv2.VideoCapture(CamL_id)
 CamR = cv2.VideoCapture(CamR_id)
 
-#directory = r'C:\Users\joini\OneDrive\Documents\code\DCE\stereoVision\StereoPerception\depth-perception'
-#os.chdir(directory)
-
 # Reading the mapping values for stereo image rectification
 cv_file = cv2.FileStorage("../data/Y/params_py.xml", cv2.FILE_STORAGE_READ)
 Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
@@ -21,10 +18,8 @@ Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
 Right_Stereo_Map_y = cv_file.getNode("Right_Stereo_Map_y").mat()
 cv_file.release()
 
-
 def nothing(x):
     pass
-
 
 cv2.namedWindow('disp', cv2.WINDOW_NORMAL)
 cv2.resizeWindow('disp', 400, 400)
@@ -46,8 +41,9 @@ cv2.createTrackbar('lmbda', 'disp', 7000, 9000, nothing)
 
 # Creating an object of StereoBM algorithm
 stereo = cv2.StereoBM_create()
-wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
 # stereo = cv2.StereoSGBM_create()
+wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
+
 
 while True:
 
